@@ -1,277 +1,136 @@
-# LangGraph 智能旅行助手
+# TripForge
 
-基于 LangGraph 和 LangChain 构建的智能旅行行程规划系统，支持多 Agent 协作、流式响应、预算控制和地图可视化。
+> 5 个 AI Agent 同时开工，3 秒出一份旅行计划。
 
-ps:本项目为hello-agents在langgraph上借助claude code的重构，目前所有流程均可以跑通，后续还会完善新的功能，欢迎大家提出宝贵的意见和建议，一起学习一起进大厂！！！
+---
 
-## 功能特性
+## 它是什么？
 
-### 核心功能
+你告诉 TripForge 想去哪、待几天、花多少钱，它启动一组 AI Agent 分别去搜景点、查天气、找酒店，最后汇总成一份可以跟着走的行程表。不用自己翻小红书、高德、携程来回切换。
 
-- **智能行程规划**: 根据目的地、日期、偏好自动生成详细行程
-- **预算控制**: 支持设置预算范围，AI 会根据预算合理安排景点、餐饮和住宿
-- **实时进度反馈**: SSE 流式响应，实时展示 Agent 执行进度
-- **地图可视化**: 高德地图集成，展示景点位置和路线
-- **多轮对话**: 支持自然语言交互，逐步完善行程需求
-- **行程持久化**: 每次规划结果自动保存为 JSON 文件
+**Form 模式**适合快速出结果，填表 30 秒 → 等几秒 → 出计划。
+**Chat 模式**适合没有明确想法的时候，像聊天一样慢慢把需求说明白，AI 追问、补全、纠错。
 
-### 技术亮点
+规划完的行程有地图、有预算拆解、有每日时间线，可以导出 PDF 带走。
 
-- **多 LLM 支持**: DeepSeek，可灵活切换
-- **高德地图 API**: POI 搜索、天气查询、酒店推荐、地理编码
-- **类型安全**: 后端 Pydantic + 前端 TypeScript 全栈类型校验
-- **响应式 UI**: Vue 3 + Element Plus，支持移动端
+---
+
+## 怎么搭起来
+
+### 你需要的钥匙
+
+| 去哪申请 | 用来干嘛 |
+|----------|----------|
+| [DeepSeek 开放平台](https://platform.deepseek.com) | 让 AI 能"思考"，生成行程 |
+| [高德开放平台](https://lbs.amap.com) | 搜景点、查天气、找酒店 |
+
+> 高德要申请两次：Web 服务 Key 给后端用，JS API Key 给前端地图用。
+
+### 后端
+
+```bash
+cd backend
+pip install -r requirements.txt
+cp .env.example .env   # 然后把 Key 填进去
+python run.py           # 跑在 8000 端口
+```
+
+### 前端
+
+```bash
+cd frontend
+npm install
+cp .env.example .env   # 填前端用的高德 Key
+npm run dev             # 跑在 5173 端口
+```
+
+打开浏览器就是首页，填表或聊天都行。
+
+---
+
+## 里面长什么样
+
+整个系统可以理解成一条流水线：
+
+```
+你说"想去杭州玩两天"
+        │
+        ▼
+┌──────────────────┐
+│   POI Agent      │  ← 分析你的偏好，搜出最匹配的 20 个景点
+└──────┬───────────┘
+        ▼
+┌──────────────────┐
+│   Weather Agent  │  ← 查目的地这几天的天气
+└──────┬───────────┘
+        ▼
+┌──────────────────┐
+│   Hotel Agent    │  ← 按你选的住宿档位找酒店
+└──────┬───────────┘
+        ▼
+┌──────────────────┐
+│   Planner Agent  │  ← 把上面的信息拼成完整行程 JSON
+└──────┬───────────┘
+        ▼
+┌──────────────────┐
+│   Human Review   │  ← 你看了不满意可以打回去重做
+└──────────────────┘
+```
+
+五个 Agent 是按顺序跑的，但每个 Agent 内部都在并行干活。前端用 SSE 流式接收进度，所以你能看到实时的 Agent 状态切换。
+
+这整个编排逻辑写在 **LangGraph** 的状态图里，LLM 端可以切 DeepSeek 或 OpenAI，地图数据来自高德 API。
+
+---
+
+## 技术选型
+
+**后端：** FastAPI · LangChain · LangGraph · Pydantic v2 · ChromaDB · SSE
+
+**前端：** Vue 3 · TypeScript · Pinia · Element Plus · 高德 JS API
+
+**外部：** DeepSeek / OpenAI · 高德地图 · LangSmith（可选，监控 Agent）
+
+---
 
 ## 项目结构
 
 ```
-langgraph-trip-planner/
-├── backend/                    # 后端服务
-│   ├── app/
-│   │   ├── api/               # API 路由
-│   │   │   ├── routes/
-│   │   │   │   ├── trip.py    # 行程规划接口
-│   │   │   │   ├── chat.py    # 多轮对话接口
-│   │   │   │   └── map.py     # 地图服务接口
-│   │   │   └── main.py        # FastAPI 入口
-│   │   ├── core/              # 核心配置
-│   │   │   ├── config.py      # 环境配置
-│   │   │   └── llm.py         # LLM 工厂
-│   │   ├── models/
-│   │   │   └── schemas.py     # 数据模型
-│   │   ├── services/
-│   │   │   └── amap_service.py # 高德地图服务
-│   │   └── saved_results/     # 行程结果存储
-│   ├── requirements.txt
-│   └── .env                   # 环境变量 (需配置)
-│
-└── frontend/                   # 前端应用
-    ├── src/
-    │   ├── views/
-    │   │   ├── Home.vue       # 表单模式主页
-    │   │   ├── Result.vue     # 结果展示页
-    │   │   └── Chat.vue       # 对话模式页
-    │   ├── stores/            # Pinia 状态管理
-    │   ├── services/          # API 服务
-    │   └── types/             # TypeScript 类型
-    ├── package.json
-    └── .env                   # 环境变量 (需配置)
+travel-planner/
+├── backend/
+│   └── app/
+│       ├── agents/      # LangGraph 状态图 + 5 个 Agent 节点
+│       ├── api/         # FastAPI 路由（trip / chat / map / config）
+│       ├── core/        # 配置、LLM 工厂、对话记忆
+│       ├── models/      # Pydantic 数据模型
+│       └── services/    # 高德 API 封装、向量存储
+└── frontend/
+    └── src/
+        ├── views/       # Home（表单）/ Chat（对话）/ Result（结果+地图）
+        ├── stores/      # Pinia 状态
+        └── services/    # Axios API 调用
 ```
 
-## 快速开始
-
-### 环境要求
-
-- Python 3.10+
-- Node.js 18+
-- Conda (推荐)
-
-### 1. 后端配置
-
-```bash
-cd backend
-
-# 创建并激活 Conda 环境
-conda create -n agent_planner python=3.10
-conda activate agent_planner
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 配置环境变量
-cp .env.example .env
-```
-
-编辑 `.env` 文件：
-
-```env
-# LLM 配置 (至少配置一个)
-DEEPSEEK_API_KEY=your_deepseek_api_key
-
-# 高德地图 API (必需)
-AMAP_API_KEY=your_amap_web_api_key
-
-# LangSmith 追踪 (可选)
-LANGCHAIN_TRACING_V2=false
-LANGCHAIN_API_KEY=your_langsmith_key
-LANGCHAIN_PROJECT=trip-planner-agent
-```
-
-启动后端服务：
-
-```bash
-uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-### 2. 前端配置
-
-```bash
-cd frontend
-
-# 安装依赖
-npm install
-
-# 配置环境变量
-cp .env.example .env
-```
-
-编辑 `.env` 文件：
-
-```env
-VITE_API_BASE_URL=http://localhost:8000
-VITE_AMAP_KEY=your_amap_js_api_key
-```
-
-> 注意：高德地图需要分别申请 Web API Key (后端) 和 JS API Key (前端)
-
-启动前端服务：
-
-```bash
-npm run dev
-```
-
-访问 http://localhost:5173 开始使用。
-
-## API 接口
-
-### 行程规划 (同步)
-
-```http
-POST /api/trip/plan
-Content-Type: application/json
-
-{
-  "city": "武汉",
-  "start_date": "2026-04-23",
-  "end_date": "2026-04-24",
-  "travel_days": 2,
-  "transportation": "公共交通",
-  "accommodation": "舒适型酒店",
-  "preferences": ["历史文化"],
-  "free_text_input": "想看黄鹤楼",
-  "budget": [1000, 3000],
-  "llm_provider": "deepseek"
-}
-```
-
-### 行程规划 (流式)
-
-```http
-POST /api/trip/plan/stream
-Content-Type: application/json
-
-# 返回 SSE 流式事件
-data: {"node": "init", "status": "running", "message": "正在初始化..."}
-data: {"node": "poi_search", "status": "completed", "message": "找到 20 个景点"}
-data: {"node": "complete", "data": {"itinerary": {...}}}
-```
-
-### 多轮对话
-
-```http
-POST /api/chat/message
-Content-Type: application/json
-
-{
-  "session_id": "session_xxx",
-  "message": "我想去武汉玩两天，预算两千左右",
-  "llm_provider": "deepseek"
-}
-```
-
-## 使用说明
-
-### 表单模式
-
-1. 输入目的地城市、出发和返回日期
-2. 选择交通方式和住宿偏好
-3. 勾选旅行偏好 (历史文化、自然风光、美食等)
-4. 设置预算范围 (滑动条调整)
-5. 选择 AI 模型
-6. 点击"开始规划行程"
-7. 实时查看 Agent 执行进度
-8. 规划完成后自动跳转结果页
-
-### 对话模式
-
-支持自然语言交互，例如：
-- "我想去北京玩三天"
-- "预算大概两千块"
-- "喜欢历史文化景点"
-- "帮我推荐一些美食"
-
-### 结果展示
-
-- 行程概览：城市、日期、天数
-- 地图展示：景点位置标记
-- 每日行程：景点详情、游玩时长、门票价格
-- 餐饮推荐：早餐、午餐、晚餐
-- 住宿安排：酒店信息、价格范围
-- 预算估算：分类费用统计
-- PDF 导出：保存行程计划
-
-## 数据存储
-
-每次行程规划完成后，结果会自动保存到 `backend/app/saved_results/` 目录：
-
-```json
-{
-  "session_id": "xxx",
-  "created_at": "2026-04-22T15:00:00",
-  "request": {
-    "city": "武汉",
-    "budget": [1000, 3000],
-    ...
-  },
-  "result": {
-    "city": "武汉",
-    "days": [...],
-    "budget": {...}
-  }
-}
-```
-
-## 技术栈
-
-### 后端
-
-| 技术 | 用途 |
-|------|------|
-| FastAPI | Web 框架 |
-| LangChain | LLM 应用框架 |
-| Pydantic | 数据验证 |
-| httpx | 异步 HTTP 客户端 |
-| uvicorn | ASGI 服务器 |
-
-### 前端
-
-| 技术 | 用途 |
-|------|------|
-| Vue 3 | 前端框架 |
-| TypeScript | 类型安全 |
-| Element Plus | UI 组件库 |
-| Pinia | 状态管理 |
-| Axios | HTTP 客户端 |
-| Vue Router | 路由管理 |
-
-### 外部服务
-
-| 服务 | 用途 |
-|------|------|
-| 高德地图 API | POI 搜索、天气、地理编码 |
-| DeepSeek | LLM 服务 |
+---
 
 ## 注意事项
 
-1. **API Key 安全**: 请勿将 `.env` 文件提交到版本控制
-2. **高德地图 Key**: 需要分别申请 Web 服务 API Key (后端) 和 JS API Key (前端)
-3. **LLM 费用**: 使用 DeepSeek 会产生 API 调用费用
-4. **预算控制**: AI 生成的预算为估算值，实际花费可能有所不同
+- **别把 `.env` 传上去** —— 里面是你的 API Key，.gitignore 已经拦住了
+- 高德 Web 服务 Key 和 JS API Key 是两把不同的钥匙，别混用
+- DeepSeek 调用会扣费，不过很便宜，规划一次大概几分钱
+- 预算数字是 AI 估算的，实际花销以现场为准
+- `saved_results/` 里的 JSON 是你每次规划的存档，定期清理不会丢东西
 
-## 开发计划
+---
 
-- [ ] 添加更多 LLM 提供商 (OpenAI, Claude)
-- [ ] 支持行程分享功能
-- [ ] 添加用户收藏和历史记录
-- [ ] 优化移动端体验
-- [ ] 添加景点评价和图片
+## 路线图
+
+- [ ] 接入更多 LLM（Claude、通义千问）
+- [ ] 行程分享链接
+- [ ] 用户系统 + 历史记录
+- [ ] 移动端 PWA 适配
+- [ ] 景点实拍图 + 评价聚合
+
+---
+
+建这个项目是为了练手 LangGraph 的多 Agent 编排，如果你有想法或发现了 bug，欢迎提 Issue 或者直接 PR。
