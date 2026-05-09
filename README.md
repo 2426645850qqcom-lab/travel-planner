@@ -4,6 +4,16 @@
 
 ---
 
+## 技术选型
+
+**后端：** FastAPI · LangChain · LangGraph · Pydantic v2 · ChromaDB · SSE
+
+**前端：** Vue 3 · TypeScript · Pinia · Element Plus · 高德 JS API
+
+**外部：** DeepSeek / OpenAI · 高德地图 · LangSmith（可选，监控 Agent）
+
+---
+
 ## 它是什么？
 
 你告诉 TripForge 想去哪、待几天、花多少钱，它启动一组 AI Agent 分别去搜景点、查天气、找酒店，最后汇总成一份可以跟着走的行程表。不用自己翻小红书、高德、携程来回切换。
@@ -83,15 +93,6 @@ npm run dev             # 跑在 5173 端口
 
 ---
 
-## 技术选型
-
-**后端：** FastAPI · LangChain · LangGraph · Pydantic v2 · ChromaDB · SSE
-
-**前端：** Vue 3 · TypeScript · Pinia · Element Plus · 高德 JS API
-
-**外部：** DeepSeek / OpenAI · 高德地图 · LangSmith（可选，监控 Agent）
-
----
 
 ## 项目结构
 
