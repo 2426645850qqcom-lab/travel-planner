@@ -1,6 +1,6 @@
-# TripForge
+# 旅行计划助手
 
-> 5 个 AI Agent 同时开工，3 秒出一份旅行计划。
+> 由5 个 AI Agent 共同产出一份详细的旅行计划。
 
 ---
 
@@ -113,14 +113,6 @@ travel-planner/
 
 ---
 
-## 注意事项
-
-- **别把 `.env` 传上去** —— 里面是你的 API Key，.gitignore 已经拦住了
-- 高德 Web 服务 Key 和 JS API Key 是两把不同的钥匙，别混用
-- DeepSeek 调用会扣费，不过很便宜，规划一次大概几分钱
-- 预算数字是 AI 估算的，实际花销以现场为准
-- `saved_results/` 里的 JSON 是你每次规划的存档，定期清理不会丢东西
-
 ---
 
 ## 路线图
@@ -132,5 +124,3 @@ travel-planner/
 - [ ] 景点实拍图 + 评价聚合
 
 ---
-
-建这个项目是为了练手 LangGraph 的多 Agent 编排，如果你有想法或发现了 bug，欢迎提 Issue 或者直接 PR。
