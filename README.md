@@ -1,6 +1,7 @@
 # 智能旅行助手
 
-基于 LangGraph 和 LangChain 构建的智能旅行行程规划系统，支持多 Agent 协作、流式响应、预算控制和地图可视化。
+基于 LangGraph 构建的智能旅行行程规划系统，支持多 Agent 协作、流式响应、预算控制和地图可视化。
+本项目为"vibe coding + claude code"辅助开发，需自行配置deepseek和高德地图API才能正常使用
 
 ## 功能特性
 
